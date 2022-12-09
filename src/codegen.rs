@@ -12,6 +12,8 @@ use std::rc::Rc;
 
 type Statements = Vec<Statement>;
 
+// sowas
+
 pub struct Codegen {
     symbols: HashMap<&'static str, LLVMValueRef>,
     context: Rc<LLContext>,
