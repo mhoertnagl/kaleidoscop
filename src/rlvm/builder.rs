@@ -1,3 +1,4 @@
+use crate::rlvm::basic_block::*;
 use llvm_sys::core::*;
 use llvm_sys::prelude::*;
 use llvm_sys::*;
@@ -10,14 +11,14 @@ macro_rules! c_str {
     };
 }
 
-pub struct Builder {
-    builder: LLVMBuilderRef,
+pub struct LLBuilder {
+    pub builder: LLVMBuilderRef,
 }
 
-impl Builder {
+impl LLBuilder {
     pub fn new() -> Self {
         unsafe {
-            Builder {
+            LLBuilder {
                 builder: LLVMCreateBuilder(),
             }
         }
@@ -104,22 +105,35 @@ impl Builder {
     pub fn cond_br(
         &self,
         cond: LLVMValueRef,
-        then: LLVMBasicBlockRef,
-        els: LLVMBasicBlockRef,
+        then: Box<LLBasicBlock>,
+        els: Box<LLBasicBlock>,
     ) -> LLVMValueRef {
-        unsafe { LLVMBuildCondBr(self.builder, cond, then, els) }
+        unsafe { LLVMBuildCondBr(self.builder, cond, then.bb, els.bb) }
     }
 
-    pub fn br(&self, dest: LLVMBasicBlockRef) -> LLVMValueRef {
-        unsafe { LLVMBuildBr(self.builder, dest) }
+    // pub fn cond_br(
+    //     &self,
+    //     cond: LLVMValueRef,
+    //     then: LLVMBasicBlockRef,
+    //     els: LLVMBasicBlockRef,
+    // ) -> LLVMValueRef {
+    //     unsafe { LLVMBuildCondBr(self.builder, cond, then, els) }
+    // }
+
+    pub fn br(&self, dest: Box<LLBasicBlock>) -> LLVMValueRef {
+        unsafe { LLVMBuildBr(self.builder, dest.bb) }
     }
+
+    // pub fn br(&self, dest: LLVMBasicBlockRef) -> LLVMValueRef {
+    //     unsafe { LLVMBuildBr(self.builder, dest) }
+    // }
 
     pub fn ret(&self, val: LLVMValueRef) -> LLVMValueRef {
         unsafe { LLVMBuildRet(self.builder, val) }
     }
 }
 
-impl Drop for Builder {
+impl Drop for LLBuilder {
     fn drop(&mut self) {
         unsafe {
             LLVMDisposeBuilder(self.builder);
