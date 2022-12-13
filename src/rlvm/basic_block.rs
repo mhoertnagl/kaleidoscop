@@ -17,8 +17,8 @@ macro_rules! c_str {
 
 pub struct LLBasicBlock {
     builder: Rc<LLBuilder>,
-    module: Rc<RefCell<LLModule>>,
-    fun: Box<LLFunction>,
+    module: Rc<LLModule>,
+    fun: Rc<LLFunction>,
     pub bb: LLVMBasicBlockRef,
 }
 
@@ -26,14 +26,14 @@ impl LLBasicBlock {
     pub fn new(
         name: &str,
         builder: Rc<LLBuilder>,
-        module: Rc<RefCell<LLModule>>,
-        fun: Box<LLFunction>,
-    ) -> Box<LLBasicBlock> {
+        module: Rc<LLModule>,
+        fun: Rc<LLFunction>,
+    ) -> Rc<LLBasicBlock> {
         unsafe {
-            Box::new(LLBasicBlock {
+            Rc::new(LLBasicBlock {
                 builder,
                 module,
-                fun,
+                fun: fun.clone(),
                 bb: LLVMAppendBasicBlock(fun.fun, c_str!(name)),
             })
         }

@@ -20,12 +20,12 @@ pub struct LLModule {
 }
 
 impl LLModule {
-    pub fn new(builder: Rc<LLBuilder>, name: &str) -> Rc<RefCell<LLModule>> {
+    pub fn new(builder: Rc<LLBuilder>, name: &str) -> Rc<LLModule> {
         unsafe {
-            Rc::new(RefCell::new(LLModule {
+            Rc::new(LLModule {
                 builder,
                 module: LLVMModuleCreateWithName(c_str!(name)),
-            }))
+            })
         }
     }
 
@@ -35,7 +35,7 @@ impl LLModule {
         args: &mut [LLVMTypeRef],
         ret: LLVMTypeRef,
     ) -> Rc<LLFunction> {
-        LLFunction::new(self.builder, Rc::new(RefCell::new(*self)), name, args, ret)
+        LLFunction::new(self.builder.clone(), Rc::new(*self), name, args, ret)
     }
 
     pub fn write_to_file(&self, name: &str) {

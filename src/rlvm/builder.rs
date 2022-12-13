@@ -4,6 +4,7 @@ use llvm_sys::prelude::*;
 use llvm_sys::*;
 use std::ffi::*;
 use std::ptr;
+use std::rc::Rc;
 
 macro_rules! c_str {
     ($s:expr) => {
@@ -105,8 +106,8 @@ impl LLBuilder {
     pub fn cond_br(
         &self,
         cond: LLVMValueRef,
-        then: Box<LLBasicBlock>,
-        els: Box<LLBasicBlock>,
+        then: Rc<LLBasicBlock>,
+        els: Rc<LLBasicBlock>,
     ) -> LLVMValueRef {
         unsafe { LLVMBuildCondBr(self.builder, cond, then.bb, els.bb) }
     }
@@ -120,7 +121,7 @@ impl LLBuilder {
     //     unsafe { LLVMBuildCondBr(self.builder, cond, then, els) }
     // }
 
-    pub fn br(&self, dest: Box<LLBasicBlock>) -> LLVMValueRef {
+    pub fn br(&self, dest: Rc<LLBasicBlock>) -> LLVMValueRef {
         unsafe { LLVMBuildBr(self.builder, dest.bb) }
     }
 

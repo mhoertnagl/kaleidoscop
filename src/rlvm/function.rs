@@ -20,12 +20,12 @@ const LLVM_TRUE: LLVMBool = 1;
 
 pub struct LLFunction {
     builder: Rc<LLBuilder>,
-    module: Rc<RefCell<LLModule>>,
+    module: Rc<LLModule>,
     pub fun: LLVMValueRef,
 }
 
 impl LLFunction {
-    pub fn empty(builder: Rc<LLBuilder>, module: Rc<RefCell<LLModule>>) -> Rc<LLFunction> {
+    pub fn empty(builder: Rc<LLBuilder>, module: Rc<LLModule>) -> Rc<LLFunction> {
         unsafe {
             Rc::new(LLFunction {
                 builder,
@@ -37,7 +37,7 @@ impl LLFunction {
 
     pub fn new(
         builder: Rc<LLBuilder>,
-        module: Rc<RefCell<LLModule>>,
+        module: Rc<LLModule>,
         name: String,
         args: &mut [LLVMTypeRef],
         ret: LLVMTypeRef,
@@ -46,13 +46,18 @@ impl LLFunction {
             let typ = LLVMFunctionType(ret, args.as_mut_ptr(), args.len() as u32, LLVM_FALSE);
             Rc::new(LLFunction {
                 builder,
-                module,
-                fun: LLVMAddFunction(module.borrow().module, c_str!(name), typ),
+                module: module.clone(),
+                fun: LLVMAddFunction(module.module, c_str!(name), typ),
             })
         }
     }
 
-    pub fn append_basic_block(&self, name: &str) -> Box<LLBasicBlock> {
-        LLBasicBlock::new(name, self.builder, self.module, Box::new(*self))
+    pub fn append_basic_block(&self, name: &str) -> Rc<LLBasicBlock> {
+        LLBasicBlock::new(
+            name,
+            self.builder.clone(),
+            self.module.clone(),
+            Rc::new(*self),
+        )
     }
 }

@@ -4,21 +4,28 @@ use crate::rlvm::context::*;
 use crate::rlvm::function::*;
 use crate::rlvm::module::*;
 // use crate::llvm::*;
-
 use llvm_sys::prelude::LLVMValueRef;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ffi::*;
+use std::ptr;
 use std::rc::Rc;
+
+// macro_rules! c_str {
+//     ($s:expr) => {
+//         CString::new($s).unwrap().as_ptr() as *const i8
+//     };
+// }
 
 type Statements = Vec<Statement>;
 
 // sowas
 
 pub struct Codegen {
-    symbols: HashMap<&'static str, LLVMValueRef>,
+    symbols: HashMap<Rc<String>, LLVMValueRef>,
     context: Rc<LLContext>,
     builder: Rc<LLBuilder>,
-    module: Rc<RefCell<LLModule>>,
+    module: Rc<LLModule>,
     function: Rc<LLFunction>,
 }
 
@@ -27,8 +34,8 @@ impl Codegen {
         let context = LLContext::new();
         let builder = context.new_builder();
         // TODO: builder.new_module("main");
-        let module = LLModule::new(builder, "main");
-        let function = LLFunction::empty(builder, module);
+        let module = LLModule::new(builder.clone(), "main");
+        let function = LLFunction::empty(builder.clone(), module.clone());
         Codegen {
             symbols: HashMap::new(),
             context,
@@ -38,9 +45,9 @@ impl Codegen {
         }
     }
 
-    pub unsafe fn emit(&self, module: &Module) {
+    pub unsafe fn emit(&mut self, module: &Module) {
         self.module(module);
-        self.module.borrow().write_to_file("main.bc");
+        self.module.write_to_file("main.bc");
     }
 }
 
@@ -70,18 +77,15 @@ impl Codegen {
     unsafe fn let_statement(&mut self, s: &LetStatement) {
         let typ_int64 = self.context.int64();
         let val = self.expr(&s.expr);
-        let loc = self.builder.alloca(s.name, typ_int64);
+        let loc = self.builder.alloca(s.name.clone(), typ_int64);
         self.builder.store(val, loc);
         // TODO: Check for redefinition.
-        self.symbols.insert(&s.name.clone(), loc);
+        self.symbols.insert(Rc::new(s.name.clone()), loc);
     }
 
     unsafe fn def_statement(&mut self, s: &DefStatement) {
         let typ_int64 = self.context.int64();
-        self.function = self
-            .module
-            .borrow()
-            .new_function(s.name, &mut [], typ_int64);
+        self.function = self.module.new_function(s.name.clone(), &mut [], typ_int64);
         let bb = self.function.append_basic_block("entry");
         bb.position_at_end();
         self.statements(&s.statements);
@@ -89,7 +93,7 @@ impl Codegen {
 
     unsafe fn assign_statement(&mut self, s: &AssignStatement) {
         let val = self.expr(&s.expr);
-        let loc = *self.symbols.get(s.name.as_str()).unwrap();
+        let loc = *self.symbols.get(&s.name).unwrap();
         self.builder.store(val, loc);
     }
 
@@ -103,13 +107,14 @@ impl Codegen {
         let then_block = self.function.append_basic_block("ifcond");
         let els_block = self.function.append_basic_block("ifalt");
         let merge_block = self.function.append_basic_block("ifmerge");
-        self.builder.cond_br(nonzero_cond, then_block, els_block);
+        self.builder
+            .cond_br(nonzero_cond, then_block.clone(), els_block.clone());
         then_block.position_at_end();
         self.statements(&s.cons);
-        self.builder.br(merge_block);
+        self.builder.br(merge_block.clone());
         els_block.position_at_end();
         self.statements(&s.alt);
-        self.builder.br(merge_block);
+        self.builder.br(merge_block.clone());
         merge_block.position_at_end();
     }
 
@@ -152,7 +157,7 @@ impl Codegen {
 
     unsafe fn id(&mut self, id: &str) -> LLVMValueRef {
         // TODO: Check for existence.
-        let loc = *self.symbols.get(id).unwrap();
+        let loc = *self.symbols.get(&String::from(id)).unwrap();
         self.builder.load(id, loc)
     }
 }
