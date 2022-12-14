@@ -3,11 +3,7 @@ use crate::rlvm::function::*;
 use crate::rlvm::module::*;
 use llvm_sys::core::*;
 use llvm_sys::prelude::*;
-use llvm_sys::*;
-use std::cell::RefCell;
 use std::ffi::*;
-use std::ptr;
-use std::rc::Rc;
 
 macro_rules! c_str {
     ($s:expr) => {
@@ -16,32 +12,44 @@ macro_rules! c_str {
 }
 
 pub struct LLBasicBlock {
-    builder: Rc<LLBuilder>,
-    module: Rc<LLModule>,
-    fun: Rc<LLFunction>,
+    name: String,
+    builder: LLBuilderRef,
+    module: LLModuleRef,
+    fun: LLFunctionRef,
     pub bb: LLVMBasicBlockRef,
 }
+
+pub type LLBasicBlockRef = *mut LLBasicBlock;
 
 impl LLBasicBlock {
     pub fn new(
         name: &str,
-        builder: Rc<LLBuilder>,
-        module: Rc<LLModule>,
-        fun: Rc<LLFunction>,
-    ) -> Rc<LLBasicBlock> {
+        builder: LLBuilderRef,
+        module: LLModuleRef,
+        fun: LLFunctionRef,
+    ) -> LLBasicBlock {
         unsafe {
-            Rc::new(LLBasicBlock {
+            println!("    Basic block [{name}] created");
+            LLBasicBlock {
+                name: String::from(name),
                 builder,
                 module,
-                fun: fun.clone(),
-                bb: LLVMAppendBasicBlock(fun.fun, c_str!(name)),
-            })
+                fun,
+                bb: LLVMAppendBasicBlock(fun.as_ref().unwrap().fun, c_str!(name)),
+            }
         }
     }
 
     pub fn position_at_end(&self) {
         unsafe {
-            LLVMPositionBuilderAtEnd((*self.builder).builder, self.bb);
+            LLVMPositionBuilderAtEnd(self.builder.as_ref().unwrap().builder, self.bb);
         }
+    }
+}
+
+impl Drop for LLBasicBlock {
+    fn drop(&mut self) {
+        let name = &self.name;
+        println!("    Basic block [{name}] dropped");
     }
 }

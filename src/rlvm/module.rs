@@ -3,10 +3,7 @@ use crate::rlvm::function::*;
 use llvm_sys::bit_writer::*;
 use llvm_sys::core::*;
 use llvm_sys::prelude::*;
-use std::cell::RefCell;
 use std::ffi::*;
-use std::ptr;
-use std::rc::Rc;
 
 macro_rules! c_str {
     ($s:expr) => {
@@ -15,27 +12,32 @@ macro_rules! c_str {
 }
 
 pub struct LLModule {
-    builder: Rc<LLBuilder>,
+    name: String,
+    builder: LLBuilderRef,
     pub module: LLVMModuleRef,
 }
 
+pub type LLModuleRef = *mut LLModule;
+
 impl LLModule {
-    pub fn new(builder: Rc<LLBuilder>, name: &str) -> Rc<LLModule> {
+    pub fn new(builder: LLBuilderRef, name: &str) -> LLModule {
         unsafe {
-            Rc::new(LLModule {
+            println!("    Module [{name}] created");
+            LLModule {
+                name: String::from(name),
                 builder,
                 module: LLVMModuleCreateWithName(c_str!(name)),
-            })
+            }
         }
     }
 
     pub fn new_function(
-        &self,
+        &mut self,
         name: String,
         args: &mut [LLVMTypeRef],
         ret: LLVMTypeRef,
-    ) -> Rc<LLFunction> {
-        LLFunction::new(self.builder.clone(), Rc::new(*self), name, args, ret)
+    ) -> LLFunction {
+        LLFunction::new(self.builder, self, name, args, ret)
     }
 
     pub fn write_to_file(&self, name: &str) {
@@ -48,6 +50,8 @@ impl LLModule {
 
 impl Drop for LLModule {
     fn drop(&mut self) {
+        let name = &self.name;
+        println!("    Module [{name}] dropped");
         unsafe {
             LLVMDisposeModule(self.module);
         }

@@ -3,8 +3,6 @@ use llvm_sys::core::*;
 use llvm_sys::prelude::*;
 use llvm_sys::*;
 use std::ffi::*;
-use std::ptr;
-use std::rc::Rc;
 
 macro_rules! c_str {
     ($s:expr) => {
@@ -16,14 +14,17 @@ pub struct LLBuilder {
     pub builder: LLVMBuilderRef,
 }
 
+pub type LLBuilderRef = *mut LLBuilder;
+
 impl LLBuilder {
-    pub fn new() -> Self {
-        unsafe {
-            LLBuilder {
-                builder: LLVMCreateBuilder(),
-            }
-        }
-    }
+    // pub fn new() -> LLBuilder {
+    //     unsafe {
+    //         println!("Builder created");
+    //         LLBuilder {
+    //             builder: LLVMCreateBuilder(),
+    //         }
+    //     }
+    // }
 
     pub fn mul(&self, lhs: LLVMValueRef, rhs: LLVMValueRef) -> LLVMValueRef {
         unsafe { LLVMBuildMul(self.builder, lhs, rhs, c_str!("prod")) }
@@ -106,10 +107,17 @@ impl LLBuilder {
     pub fn cond_br(
         &self,
         cond: LLVMValueRef,
-        then: Rc<LLBasicBlock>,
-        els: Rc<LLBasicBlock>,
+        then: LLBasicBlockRef,
+        els: LLBasicBlockRef,
     ) -> LLVMValueRef {
-        unsafe { LLVMBuildCondBr(self.builder, cond, then.bb, els.bb) }
+        unsafe {
+            LLVMBuildCondBr(
+                self.builder,
+                cond,
+                then.as_ref().unwrap().bb,
+                els.as_ref().unwrap().bb,
+            )
+        }
     }
 
     // pub fn cond_br(
@@ -121,8 +129,8 @@ impl LLBuilder {
     //     unsafe { LLVMBuildCondBr(self.builder, cond, then, els) }
     // }
 
-    pub fn br(&self, dest: Rc<LLBasicBlock>) -> LLVMValueRef {
-        unsafe { LLVMBuildBr(self.builder, dest.bb) }
+    pub fn br(&self, dest: LLBasicBlockRef) -> LLVMValueRef {
+        unsafe { LLVMBuildBr(self.builder, dest.as_ref().unwrap().bb) }
     }
 
     // pub fn br(&self, dest: LLVMBasicBlockRef) -> LLVMValueRef {
@@ -136,6 +144,7 @@ impl LLBuilder {
 
 impl Drop for LLBuilder {
     fn drop(&mut self) {
+        println!("    Builder dropped");
         unsafe {
             LLVMDisposeBuilder(self.builder);
         }

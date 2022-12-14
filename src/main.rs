@@ -1,5 +1,7 @@
 extern crate llvm_sys;
 
+use std::ops::Deref;
+
 use codegen::Codegen;
 
 // mod llvm;

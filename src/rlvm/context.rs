@@ -1,29 +1,29 @@
 use crate::rlvm::builder::*;
 use llvm_sys::core::*;
 use llvm_sys::prelude::*;
-use llvm_sys::*;
-use std::ffi::*;
-use std::ptr;
-use std::rc::Rc;
 
 pub struct LLContext {
     context: LLVMContextRef,
 }
 
+// pub type LLContextRef = *mut LLContext;
+
 impl LLContext {
-    pub fn new() -> Rc<LLContext> {
+    pub fn new() -> LLContext {
         unsafe {
-            Rc::new(LLContext {
+            println!("    Context created");
+            LLContext {
                 context: LLVMContextCreate(),
-            })
+            }
         }
     }
 
-    pub fn new_builder(&self) -> Rc<LLBuilder> {
+    pub fn new_builder(&self) -> LLBuilder {
         unsafe {
-            Rc::new(LLBuilder {
+            println!("    Builder created");
+            LLBuilder {
                 builder: LLVMCreateBuilderInContext(self.context),
-            })
+            }
         }
     }
 
@@ -42,6 +42,7 @@ impl LLContext {
 
 impl Drop for LLContext {
     fn drop(&mut self) {
+        println!("    Context dropped");
         unsafe {
             LLVMContextDispose(self.context);
         }
