@@ -79,11 +79,11 @@ impl Codegen {
         println!("=== BEGIN Let Statement [{s}]");
         let typ_int64 = self.context.int64();
         let val = self.expr(&s.expr);
-        // let loc = self.builder.alloca(s.name.clone(), typ_int64);
-        // self.builder.store(val, loc);
+        //let loc = self.builder.alloca(s.name.clone(), typ_int64);
+        //self.builder.store(val, loc);
         // TODO: Check for redefinition.
-        println!("    Symboltable insert [{s}]");
-        // self.symbols.insert(s.name.clone(), loc);
+        //println!("    Symboltable insert [{s}]");
+        //self.symbols.insert(s.name.clone(), loc);
         println!("=== END Let Statement [{s}]");
     }
 
