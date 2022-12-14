@@ -76,41 +76,42 @@ impl Codegen {
     }
 
     unsafe fn let_statement(&mut self, s: &LetStatement) {
-        println!("=== BEGIN Let Statement");
+        println!("=== BEGIN Let Statement [{s}]");
         let typ_int64 = self.context.int64();
         let val = self.expr(&s.expr);
-        let loc = self.builder.alloca(s.name.clone(), typ_int64);
-        self.builder.store(val, loc);
+        // let loc = self.builder.alloca(s.name.clone(), typ_int64);
+        // self.builder.store(val, loc);
         // TODO: Check for redefinition.
         println!("    Symboltable insert [{s}]");
-        self.symbols.insert(s.name.clone(), loc);
-        println!("=== END Let Statement");
+        // self.symbols.insert(s.name.clone(), loc);
+        println!("=== END Let Statement [{s}]");
     }
 
     unsafe fn def_statement(&mut self, s: &DefStatement) {
-        println!("=== BEGIN Def Statement");
+        println!("=== BEGIN Def Statement [{s}]");
         let typ_int64 = self.context.int64();
         self.function = self.module.new_function(s.name.clone(), &mut [], typ_int64);
         println!("--- Create the entry BB");
         let bb = self.function.append_basic_block("entry");
         bb.position_at_end();
         self.statements(&s.statements);
-        println!("=== END Def Statement");
+        println!("=== END Def Statement [{s}]");
     }
 
     unsafe fn assign_statement(&mut self, s: &AssignStatement) {
-        println!("=== BEGIN Assign Statement");
+        println!("=== BEGIN Assign Statement [{s}]");
         let val = self.expr(&s.expr);
-        let loc = *self.symbols.get(&s.name).unwrap();
-        self.builder.store(val, loc);
-        println!("=== END Assign Statement");
+        // let loc = *self.symbols.get(&s.name).unwrap();
+        let loc = self.context.const64(0);
+        // self.builder.store(val, loc);
+        println!("=== END Assign Statement [{s}]");
     }
 
     // TODO: Actually we only need a function call statement.
     unsafe fn expr_statement(&mut self, _s: &ExprStatement) {}
 
     unsafe fn if_statement(&mut self, s: &IfStatement) {
-        println!("=== BEGIN If Statement");
+        println!("=== BEGIN If Statement [{s}]");
         let zero_int64 = self.context.zero64();
         let cond = self.expr(&s.cond);
         let nonzero_cond = self.builder.cmp_ne(cond, zero_int64);
@@ -126,34 +127,34 @@ impl Codegen {
         self.statements(&s.alt);
         self.builder.br(&mut merge_block);
         merge_block.position_at_end();
-        println!("=== END If Statement");
+        println!("=== END If Statement [{s}]");
     }
 
     unsafe fn return_statement(&mut self, s: &ReturnStatement) {
-        println!("=== BEGIN Return Statement");
+        println!("=== BEGIN Return Statement [{s}]");
         let val = self.expr(&s.expr);
         self.builder.ret(val);
-        println!("=== END Return Statement");
+        println!("=== END Return Statement [{s}]");
     }
 
     unsafe fn expr(&mut self, e: &Expr) -> LLVMValueRef {
-        println!("=== BEGIN Expression");
+        println!("=== BEGIN Expression [{e}]");
         let val = match e {
             Expr::Atom(x) => self.atom(x),
             Expr::BinOp(x) => self.binop_expr(x),
             //Expr::FunCall(x) => self.funcall_expr(x),
         };
-        println!("=== END Expression");
+        println!("=== END Expression [{e}]");
         val
     }
 
     unsafe fn atom(&mut self, a: &Atom) -> LLVMValueRef {
-        println!("=== BEGIN Atom");
+        println!("=== BEGIN Atom [{a}]");
         let val = match a {
             Atom::Num(x) => self.num(*x),
             Atom::Id(x) => self.id(x),
         };
-        println!("=== END Atom");
+        println!("=== END Atom [{a}]");
         val
     }
 
@@ -176,12 +177,13 @@ impl Codegen {
 
     unsafe fn id(&mut self, id: &str) -> LLVMValueRef {
         // TODO: Check for existence.
-        // self.symbols
-        //     .get(&String::from(id))
-        //     .map(|loc| self.builder.load(id, *loc))
-        //     .unwrap_or(self.context.const64(0))
-        let loc = *self.symbols.get(&String::from(id)).unwrap();
-        self.builder.load(id, loc)
+        // // self.symbols
+        // //     .get(&String::from(id))
+        // //     .map(|loc| self.builder.load(id, *loc))
+        // //     .unwrap_or(self.context.const64(0))
+        // let loc = *self.symbols.get(&String::from(id)).unwrap();
+        // self.builder.load(id, loc)
+        self.context.const64(0)
     }
 }
 
