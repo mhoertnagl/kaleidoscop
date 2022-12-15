@@ -1,12 +1,17 @@
-View disassembled file:
+# skull
+
+Following [this Video Tutorial](https://www.youtube.com/watch?v=XOOBL3bhFHs&list=PLkpGh2gaaueyzEAn07jf44LdscDeWRyzy&index=1)
+
+## Development
+
+Install cargo-watch`:
 
 ```bash
-llvm-dis main.bc -o main.ll
+cargo install cargo-watch
 ```
 
-Run IR file and print return code:
+Run:
 
 ```bash
-lli main.ll; echo $?
-lli main.bc; echo $?
+cargo-watch -x run
 ```

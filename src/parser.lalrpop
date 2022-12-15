@@ -1,20 +1,7 @@
-// http://lalrpop.github.io/lalrpop/tutorial/005_building_asts.html
 use std::str::FromStr;
-use crate::ast::*;
+use ast::*;
 
 grammar;
-
-// #[inline]
-// Comma<T>: Vec<T> = {
-//   <v:(<T> ",")*> <e:T?> => match e {
-//       None => v,
-//       Some(e) => {
-//           let mut v = v;
-//           v.push(e);
-//           v
-//       }
-//   }
-// };
 
 #[inline]
 Comma<T>: Vec<T> = {
@@ -26,51 +13,65 @@ Comma<T>: Vec<T> = {
 };
 
 pub Module: Module = {
-  <ss:Statement*> => Module {
-    statements: ss,
-  },
+  <stmts:Stmt*> => Module::Body{ stmts }
 };
 
-Statement: Statement = {
-  "let" <n:Id> "=" <e:Expr> ";" =>
-    Statement::Let(LetStatement::new(n, e)),
+Stmt: Stmt = {
+  "let" <name:Id> "=" <expr:Expr> ";" =>
+    Stmt::Let{ name, expr },
 
-  "def" <n:Id> "(" <ps:Comma<Id>?> ")" <ss:Statement*> "end" =>
-    Statement::Def(DefStatement::new(n, ps, ss)),
+  "def" <name:Id> "(" <params:Comma<Id>?> ")" <stmts:Stmt*> "end" =>
+    Stmt::Def{ name, params, stmts },
 
-  <n:Id> "=" <e:Expr> ";" =>
-    Statement::Assign(AssignStatement::new(n, e)),
+  <name:Id> "=" <expr:Expr> ";" =>
+    Stmt::Assign{ name, expr },
 
   // TODO: Acuatlly function call is enough.
-  <e:Expr> ";" =>
-    Statement::Expr(ExprStatement::new(e)),
+  <expr:Expr> ";" =>
+    Stmt::Expr(expr),
 
-  "if" <cond:Expr> "then" <cons:Statement*> "else" <alt:Statement*> "end" =>
-    Statement::If(IfStatement::new(cond, cons, alt)),
+  "if" <cond:Expr> "then" <cons:Stmt*> "else" <alt:Stmt*> "end" =>
+    Stmt::If{ cond, cons, alt },
 
-  "return" <e:Expr> ";" =>
-    Statement::Return(ReturnStatement::new(e)),
+  "return" <expr:Expr> ";" =>
+    Stmt::Return(expr),
 }
 
-  // "print" <e:Expr> => Statement::Expr {
+  // "print" <e:Expr> => Stmt::Expr {
   //   expr: e,
   // },
 
 Expr: Box<Expr> = {
-  <l:Expr> <op:ExprOp> <r:Factor> =>
-    Box::new(Expr::BinOp(BinOpExpr::new(l, op, r))),
+  <left:Expr> <op:ExprOp> <right:Factor> =>
+    Box::new(Expr::BinOp{ left, op, right }),
+
+  AdditiveExpr,
+};
+
+ExprOp: Opcode = {
+  "==" => Opcode::Equal,
+  "!=" => Opcode::NotEqual,
+  "<" => Opcode::Less,
+  "<=" => Opcode::LessEqual,
+  ">" => Opcode::Greater,
+  ">=" => Opcode::GreaterEqual
+};
+
+AdditiveExpr: Box<Expr> = {
+  <left:Expr> <op:AdditiveExprOp> <right:Factor> =>
+    Box::new(Expr::BinOp{ left, op, right }),
 
   Factor,
 };
 
-ExprOp: Opcode = {
+AdditiveExprOp: Opcode = {
   "+" => Opcode::Add,
   "-" => Opcode::Sub,
 };
 
 Factor: Box<Expr> = {
-  <l:Factor> <op:FactorOp> <r:Term> =>
-    Box::new(Expr::BinOp(BinOpExpr::new(l, op, r))),
+  <left:Factor> <op:FactorOp> <right:Term> =>
+    Box::new(Expr::BinOp{ left, op, right }),
 
   Term,
 };
@@ -81,19 +82,16 @@ FactorOp: Opcode = {
 };
 
 Term: Box<Expr> = {
-  <a:Atom> => Box::new(Expr::Atom(<>)),
-  //FunCall => <>,
+  Num => Box::new(Expr::Num(<>)),
+  Id => Box::new(Expr::Id(<>)),
+  Text => Box::new(Expr::Text(<>)),
+  Call => <>,
   "(" <e:Expr> ")" => e,
 };
 
-// FunCall: Box<Expr> = {
-//   <n:Id> "(" <args:Comma<Expr>?> ")" =>
-//     Box::new(Expr::FunCall(FunCallExpr::new(n, args))),
-// };
-
-Atom: Atom = {
-  Num => Atom::Num(<>),
-  Id => Atom::Id(<>),
+Call: Box<Expr> = {
+  <name:Id> "(" <args:Comma<Expr>?> ")" =>
+    Box::new(Expr::Call{ name, args }),
 };
 
 Num: u64 = {
@@ -101,8 +99,13 @@ Num: u64 = {
 };
 
 Id: String = {
-  r"[a-zA-Z][a-zA-Z0-9]*" => String::from(<>),
+  r"[a-zA-Z][a-zA-Z0-9]*" => <>.to_string(),
 };
+
+// TODO: escape sequences incl. \'
+Text: String = {
+  r"'[^']*'" => <>.trim_matches('\'').to_string(),
+}
 
 // Num: f64 = {
 //   r"-?[0-9]+" => f64::from_str(<>).unwrap(),
@@ -110,25 +113,7 @@ Id: String = {
 // };
 
 match {
-  "let",
-  "def",
-  "if",
-  "then",
-  "else",
-  "end",
-  "return",
-  "(",
-  ")",
-  ",",
-  ";",
-  "=",
-  "+",
-  "-",
-  "*",
-  "/",
-  r"[0-9]+",
-  r"[a-zA-Z][a-zA-Z0-9]*",
-} else {
-  r"\s*" => { },
-  r"#[^\n\r]*[\n\r]*" => { },
+  r"\s*" => {},
+  r"#[^\n\r]*[\n\r]*" => {},
+  _,
 } 
