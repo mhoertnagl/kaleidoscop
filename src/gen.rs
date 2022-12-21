@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::Path;
 
 use inkwell::builder::Builder;
 use inkwell::context::Context;
@@ -31,8 +32,18 @@ impl<'ctx> Gen<'ctx> {
     }
 
     pub fn compile(&mut self, module: &Unit) {
+        let path = Path::new("main.bc");
         match module {
-            Unit::Body { ref stmts } => self.stmts(stmts),
+            Unit::Body { stmts } => {
+                self.stmts(stmts);
+                match self.module.verify() {
+                    Ok(_) => todo!(),
+                    Err(msg) => println!("{:?}", msg),
+                }
+                // self.module.print_to_file("main.ll").unwrap();
+                // self.module.write_bitcode_to_path(path);
+                self.module.print_to_stderr();
+            }
         }
     }
 
@@ -57,11 +68,30 @@ impl<'ctx> Gen<'ctx> {
         }
     }
 
-    fn assign_stmt(&mut self, name: &String, expr: &Expr) {}
+    fn assign_stmt(&mut self, name: &String, expr: &Expr) {
+        let val = self.expr(expr);
+        match self.variables.get(name) {
+            Some(ptr) => self.builder.build_store(*ptr, val),
+            None => todo!(),
+        };
+    }
 
-    fn def_stmt(&mut self, name: &String, params: &Option<Vec<String>>, stmts: &Vec<Stmt>) {}
+    fn def_stmt(&mut self, name: &String, params: &Option<Vec<String>>, stmts: &Vec<Stmt>) {
+        let ret_type = self.context.i64_type();
+        let fun_type = ret_type.fn_type(&[], false);
+        let fun = self.module.add_function(name, fun_type, None);
+        self.fn_value_opt = Some(fun);
+        let entry_bb = self.context.append_basic_block(fun, "entry");
+        self.builder.position_at_end(entry_bb);
+        self.stmts(stmts);
+    }
 
-    fn let_stmt(&mut self, name: &String, expr: &Expr) {}
+    fn let_stmt(&mut self, name: &String, expr: &Expr) {
+        let val = self.expr(expr);
+        let ptr = self.builder.build_alloca(self.context.i64_type(), name);
+        self.builder.build_store(ptr, val);
+        self.variables.insert(name.to_string(), ptr);
+    }
 
     fn expr_stmt(&mut self, expr: &Expr) {
         self.expr(expr);
@@ -70,13 +100,24 @@ impl<'ctx> Gen<'ctx> {
     fn if_stmt(&mut self, cond: &Expr, cons: &Vec<Stmt>, alt: &Vec<Stmt>) {
         let cond = self.expr(cond);
         let parent = self.fn_value_opt.unwrap();
-        let then_bb = self.context.append_basic_block(parent, "then");
-        let else_bb = self.context.append_basic_block(parent, "else");
+        let cons_bb = self.context.append_basic_block(parent, "then");
+        let alt_bb = self.context.append_basic_block(parent, "else");
         let cont_bb = self.context.append_basic_block(parent, "ifcont");
 
         self.builder
-            .build_conditional_branch(cond.into_int_value(), then_bb, else_bb);
-        // https://github.com/TheDan64/inkwell/blob/master/examples/kaleidoscope/main.rs
+            .build_conditional_branch(cond.into_int_value(), cons_bb, alt_bb);
+
+        self.builder.position_at_end(cons_bb);
+        self.stmts(cons);
+        self.builder.build_unconditional_branch(cont_bb);
+
+        self.builder.position_at_end(alt_bb);
+        self.stmts(alt);
+        self.builder.build_unconditional_branch(cont_bb);
+
+        self.builder.position_at_end(cont_bb);
+        // self.builder
+        //     .build_return(Some(&self.context.i64_type().const_zero()));
     }
 
     fn return_stmt(&mut self, expr: &Expr) {
