@@ -1,17 +1,31 @@
-use std::fs;
-
 #[macro_use]
 extern crate lalrpop_util;
 
 lalrpop_mod!(pub parser);
 
 mod ast;
+mod gen;
+
+use std::fs;
+
+use inkwell::context::Context;
+
+use gen::Gen;
+use parser::UnitParser;
 
 fn main() {
     let test = read_test();
-    let parser = parser::ModuleParser::new();
+    let parser = UnitParser::new();
+    let context = Context::create();
+    let builder = context.create_builder();
+    let module = context.create_module("main");
+    let mut gen = Gen::new(builder, &context, module);
+
     match parser.parse(test.as_str()) {
-        Ok(prog) => println!("{:?}\n", prog),
+        Ok(ref module) => {
+            println!("{:?}\n", module);
+            gen.compile(module);
+        }
         Err(err) => println!("{}", err),
     }
 }

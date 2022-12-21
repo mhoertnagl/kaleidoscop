@@ -1,5 +1,9 @@
 use std::str::FromStr;
-use ast::*;
+
+use crate::ast::Unit;
+use crate::ast::Stmt;
+use crate::ast::Expr;
+use crate::ast::Opcode;
 
 grammar;
 
@@ -12,8 +16,8 @@ Comma<T>: Vec<T> = {
   }
 };
 
-pub Module: Module = {
-  <stmts:Stmt*> => Module::Body{ stmts }
+pub Unit: Unit = {
+  <stmts:Stmt*> => Unit::Body{ stmts }
 };
 
 Stmt: Stmt = {

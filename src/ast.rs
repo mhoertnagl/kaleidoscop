@@ -1,5 +1,5 @@
 #[derive(Clone, Debug)]
-pub enum Module {
+pub enum Unit {
     Body { stmts: Vec<Stmt> },
 }
 
