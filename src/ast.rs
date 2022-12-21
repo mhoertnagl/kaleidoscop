@@ -50,10 +50,10 @@ pub enum Opcode {
     Add,
     Sub,
 
-    Equal,
-    NotEqual,
-    Less,
-    LessEqual,
-    Greater,
-    GreaterEqual,
+    EQ,
+    NE,
+    LT,
+    LE,
+    GT,
+    GE,
 }

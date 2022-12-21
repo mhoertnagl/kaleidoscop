@@ -53,12 +53,12 @@ Expr: Box<Expr> = {
 };
 
 ExprOp: Opcode = {
-  "==" => Opcode::Equal,
-  "!=" => Opcode::NotEqual,
-  "<" => Opcode::Less,
-  "<=" => Opcode::LessEqual,
-  ">" => Opcode::Greater,
-  ">=" => Opcode::GreaterEqual
+  "==" => Opcode::EQ,
+  "!=" => Opcode::NE,
+  "<" => Opcode::LT,
+  "<=" => Opcode::LE,
+  ">" => Opcode::GT,
+  ">=" => Opcode::GE
 };
 
 AdditiveExpr: Box<Expr> = {
