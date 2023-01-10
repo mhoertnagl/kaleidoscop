@@ -22,7 +22,7 @@ pub enum Stmt {
     If {
         cond: Box<Expr>,
         cons: Vec<Stmt>,
-        alt: Vec<Stmt>,
+        alt: Option<Vec<Stmt>>,
     },
     Return(Box<Expr>),
 }

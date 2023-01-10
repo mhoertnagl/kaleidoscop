@@ -7,6 +7,7 @@ use crate::ast::Opcode;
 
 grammar;
 
+// https://github.com/Storyyeller/cubiml-demo/blob/master/src/grammar.lalr
 #[inline]
 Comma<T>: Vec<T> = {
   <i1: T> <i2:("," T)*> => {
@@ -34,8 +35,8 @@ Stmt: Stmt = {
   <expr:Expr> ";" =>
     Stmt::Expr(expr),
 
-  "if" <cond:Expr> "then" <cons:Stmt*> "else" <alt:Stmt*> "end" =>
-    Stmt::If{ cond, cons, alt },
+  "if" <cond:Expr> "then" <cons:Stmt*> <alt:("else" Stmt*)?> "end" =>
+    Stmt::If{ cond, cons, alt: alt.map(|s| s.1) },
 
   "return" <expr:Expr> ";" =>
     Stmt::Return(expr),

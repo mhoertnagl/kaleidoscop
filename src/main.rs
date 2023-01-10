@@ -4,6 +4,7 @@ extern crate lalrpop_util;
 lalrpop_mod!(pub parser);
 
 mod ast;
+mod ext;
 mod gen;
 
 use std::fs;
