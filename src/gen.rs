@@ -208,28 +208,28 @@ impl<'ctx> Gen<'ctx> {
         let lhs = self.expr(left).into_int_value();
         let rhs = self.expr(right).into_int_value();
         let val = match op {
-            Opcode::Mul => self.builder.build_int_mul(lhs, rhs, "tmul"),
-            Opcode::Div => self.builder.build_int_unsigned_div(lhs, rhs, "tudiv"),
-            Opcode::Add => self.builder.build_int_add(lhs, rhs, "tadd"),
-            Opcode::Sub => self.builder.build_int_sub(lhs, rhs, "tsub"),
+            Opcode::Mul => self.builder.build_int_mul(lhs, rhs, "tmp.mul"),
+            Opcode::Div => self.builder.build_int_unsigned_div(lhs, rhs, "tmp.udiv"),
+            Opcode::Add => self.builder.build_int_add(lhs, rhs, "tmp.add"),
+            Opcode::Sub => self.builder.build_int_sub(lhs, rhs, "tmp.sub"),
             Opcode::EQ => self
                 .builder
-                .build_int_compare(IntPredicate::EQ, lhs, rhs, "teq"),
+                .build_int_compare(IntPredicate::EQ, lhs, rhs, "tmp.eq"),
             Opcode::NE => self
                 .builder
-                .build_int_compare(IntPredicate::NE, lhs, rhs, "tne"),
+                .build_int_compare(IntPredicate::NE, lhs, rhs, "tmp.ne"),
             Opcode::LT => self
                 .builder
-                .build_int_compare(IntPredicate::ULT, lhs, rhs, "tult"),
+                .build_int_compare(IntPredicate::ULT, lhs, rhs, "tmp.ult"),
             Opcode::LE => self
                 .builder
-                .build_int_compare(IntPredicate::ULE, lhs, rhs, "tule"),
+                .build_int_compare(IntPredicate::ULE, lhs, rhs, "tmp.ule"),
             Opcode::GT => self
                 .builder
-                .build_int_compare(IntPredicate::UGT, lhs, rhs, "tugt"),
+                .build_int_compare(IntPredicate::UGT, lhs, rhs, "tmp.ugt"),
             Opcode::GE => self
                 .builder
-                .build_int_compare(IntPredicate::UGE, lhs, rhs, "tuge"),
+                .build_int_compare(IntPredicate::UGE, lhs, rhs, "tmp.uge"),
         };
         BasicValueEnum::from(val)
     }

@@ -25,9 +25,7 @@ Stmt: Stmt = {
   "let" <name:Id> "=" <expr:Expr> ";" =>
     Stmt::Let{ name, expr },
 
-  "def" <name:Id> "(" <params:Comma<Id>?> ")" "{"
-    <stmts:Stmt*> 
-  "}" =>
+  "def" <name:Id> "(" <params:Comma<Id>?> ")" "{" <stmts:Stmt*> "}" =>
     Stmt::Def{ name, params, stmts },
 
   <name:Id> "=" <expr:Expr> ";" =>
@@ -37,19 +35,7 @@ Stmt: Stmt = {
   <expr:Expr> ";" =>
     Stmt::Expr(expr),
 
-  <ifstmt:IfStmt> => 
-    ifstmt,
-  // "if" <cond:Expr> "{" 
-  //   <cons:Stmt*> 
-  // "}" =>
-  //   Stmt::If{ cond, cons, alt: None },
-
-  // "if" <cond:Expr> "{" 
-  //   <cons:Stmt*> 
-  // "}" "else" "{"
-  //   <alt:Stmt*> 
-  // "}" =>
-  //   Stmt::If{ cond, cons, alt: Some(alt) },
+  IfStmt,
 
   "return" <expr:Expr> ";" =>
     Stmt::Return(expr),
@@ -79,7 +65,7 @@ IfStmt: Stmt = {
   // },
 
 Expr: Box<Expr> = {
-  <left:Expr> <op:ExprOp> <right:Factor> =>
+  <left:Expr> <op:ExprOp> <right:AdditiveExpr> =>
     Box::new(Expr::BinOp{ left, op, right }),
 
   AdditiveExpr,
@@ -95,10 +81,10 @@ ExprOp: Opcode = {
 };
 
 AdditiveExpr: Box<Expr> = {
-  <left:Expr> <op:AdditiveExprOp> <right:Factor> =>
+  <left:AdditiveExpr> <op:AdditiveExprOp> <right:MultiplicativeExpr> =>
     Box::new(Expr::BinOp{ left, op, right }),
 
-  Factor,
+  MultiplicativeExpr,
 };
 
 AdditiveExprOp: Opcode = {
@@ -106,14 +92,14 @@ AdditiveExprOp: Opcode = {
   "-" => Opcode::Sub,
 };
 
-Factor: Box<Expr> = {
-  <left:Factor> <op:FactorOp> <right:Term> =>
+MultiplicativeExpr: Box<Expr> = {
+  <left:MultiplicativeExpr> <op:MultiplicativeOp> <right:Term> =>
     Box::new(Expr::BinOp{ left, op, right }),
 
   Term,
 };
 
-FactorOp: Opcode = {
+MultiplicativeOp: Opcode = {
   "*" => Opcode::Mul,
   "/" => Opcode::Div,
 };
