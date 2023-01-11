@@ -11,7 +11,7 @@ pub enum Stmt {
     },
     Def {
         name: String,
-        params: Option<Vec<String>>,
+        params: Vec<String>,
         stmts: Vec<Stmt>,
     },
     Assign {
@@ -43,7 +43,7 @@ pub enum Expr {
     },
     Call {
         name: String,
-        args: Option<Vec<Box<Expr>>>,
+        args: Vec<Box<Expr>>,
     },
 }
 

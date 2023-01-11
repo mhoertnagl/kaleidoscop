@@ -8,12 +8,24 @@ use crate::ast::Opcode;
 grammar;
 
 // https://github.com/Storyyeller/cubiml-demo/blob/master/src/grammar.lalr
+// #[inline]
+// Comma<T>: Vec<T> = {
+//   <i1: T> <i2:("," T)*> => {
+//     let mut items = vec![i1];
+//     items.extend(i2.into_iter().map(|e| e.1));
+//     items
+//   }
+// };
+
 #[inline]
 Comma<T>: Vec<T> = {
-  <i1: T> <i2:("," T)*> => {
-    let mut items = vec![i1];
-    items.extend(i2.into_iter().map(|e| e.1));
-    items
+  <v:(<T> ",")*> <e:T?> => match e {
+      None => v,
+      Some(e) => {
+          let mut v = v;
+          v.push(e);
+          v
+      }
   }
 };
 
@@ -25,7 +37,7 @@ Stmt: Stmt = {
   "let" <name:Id> "=" <expr:Expr> ";" =>
     Stmt::Let{ name, expr },
 
-  "def" <name:Id> "(" <params:Comma<Id>?> ")" "{" <stmts:Stmt*> "}" =>
+  "def" <name:Id> "(" <params:Comma<Id>> ")" "{" <stmts:Stmt*> "}" =>
     Stmt::Def{ name, params, stmts },
 
   <name:Id> "=" <expr:Expr> ";" =>
@@ -113,7 +125,7 @@ Term: Box<Expr> = {
 };
 
 Call: Box<Expr> = {
-  <name:Id> "(" <args:Comma<Expr>?> ")" =>
+  <name:Id> "(" <args:Comma<Expr>> ")" =>
     Box::new(Expr::Call{ name, args }),
 };
 

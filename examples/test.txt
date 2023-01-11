@@ -1,14 +1,9 @@
+def foo() {
+  return 99;
+}
 
 // Comments.
 def main() {
   let x = 3 + 4 * 5;
-  if x < 2 {
-    return (2 * x + 7) * 3;
-  } 
-  else if x < 4 {
-    return 6;
-  } 
-  else {
-    return 4;
-  }
+  return x + foo();
 }

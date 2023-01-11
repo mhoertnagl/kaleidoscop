@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use either::Either::{Left, Right};
+
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue};
+use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue};
 use inkwell::IntPredicate;
 
 use crate::ast::Expr;
@@ -30,6 +32,16 @@ impl<'ctx> Gen<'ctx> {
             variables: HashMap::new(),
             fn_value_opt: None,
         }
+    }
+
+    #[inline]
+    fn get_function(&self, name: &str) -> Option<FunctionValue<'ctx>> {
+        self.module.get_function(name)
+    }
+
+    #[inline]
+    fn fn_value(&self) -> FunctionValue<'ctx> {
+        self.fn_value_opt.unwrap()
     }
 
     pub fn compile(&mut self, unit: &Unit) {
@@ -81,8 +93,8 @@ impl<'ctx> Gen<'ctx> {
         };
     }
 
-    fn def_stmt(&mut self, name: &String, params: &Option<Vec<String>>, stmts: &Vec<Stmt>) {
-        let zero = self.context.i64_type().const_int(0, false);
+    fn def_stmt(&mut self, name: &String, params: &Vec<String>, stmts: &Vec<Stmt>) {
+        let zero = self.context.i64_type().const_zero();
         let ret_type = self.context.i64_type();
         let fun_type = ret_type.fn_type(&[], false);
         let fun = self.module.add_function(name, fun_type, None);
@@ -112,7 +124,7 @@ impl<'ctx> Gen<'ctx> {
     }
 
     fn if_stmt(&mut self, cond: &Expr, cons: &Vec<Stmt>) {
-        let fun = self.fn_value_opt.unwrap();
+        let fun = self.fn_value();
         let then_bb = self.context.append_basic_block(fun, "if.then");
         let merge_bb = self.context.append_basic_block(fun, "if.merge");
 
@@ -136,7 +148,7 @@ impl<'ctx> Gen<'ctx> {
     }
 
     fn if_else_stmt(&mut self, cond: &Expr, cons: &Vec<Stmt>, alt: &Vec<Stmt>) {
-        let fun = self.fn_value_opt.unwrap();
+        let fun = self.fn_value();
         let then_bb = self.context.append_basic_block(fun, "if.then");
         let else_bb = self.context.append_basic_block(fun, "if.else");
         let merge_bb = self.context.append_basic_block(fun, "if.merge");
@@ -188,7 +200,7 @@ impl<'ctx> Gen<'ctx> {
             Expr::Id(id) => self.id_expr(id),
             Expr::Text(text) => todo!(),
             Expr::BinOp { left, op, right } => self.binop_expr(left, op, right),
-            Expr::Call { name, args } => todo!(),
+            Expr::Call { name, args } => self.call_expr(name, args),
         }
     }
 
@@ -232,5 +244,30 @@ impl<'ctx> Gen<'ctx> {
                 .build_int_compare(IntPredicate::UGE, lhs, rhs, "tmp.uge"),
         };
         BasicValueEnum::from(val)
+    }
+
+    fn call_expr(&self, name: &String, args: &Vec<Box<Expr>>) -> BasicValueEnum {
+        match self.get_function(name) {
+            Some(fun) => self._call_expr(fun, args),
+            None => {
+                println!("{}", name);
+                BasicValueEnum::from(self.context.i64_type().const_zero())
+            }
+        }
+    }
+
+    fn _call_expr(&self, fun: FunctionValue<'ctx>, args: &Vec<Box<Expr>>) -> BasicValueEnum {
+        let args: Vec<BasicMetadataValueEnum> =
+            args.iter().map(|arg| self.expr(arg).into()).collect();
+
+        let call_site_value = self
+            .builder
+            .build_call(fun, &args, "tmp.call")
+            .try_as_basic_value();
+
+        match call_site_value {
+            Left(val) => val,
+            Right(_ins) => todo!(),
+        }
     }
 }
