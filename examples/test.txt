@@ -1,9 +1,11 @@
 
-def main()
-  let x = 5;
-  if x < 2 then
+def main() {
+  let x = 3;
+  if x < 2 {
     return x;
-  else
+  } else if x < 4 {
+    return 6;
+  } else {
     return 4;
-  end
-end
+  }
+}

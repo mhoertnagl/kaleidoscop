@@ -110,17 +110,11 @@ impl<'ctx> Gen<'ctx> {
     }
 
     fn if_stmt(&mut self, cond: &Expr, cons: &Vec<Stmt>, alt: &Option<Vec<Stmt>>) {
-        // let zero = self.context.i64_type().const_int(0, false);
-
         // Append three new basic blocks to the current function.
         let fun = self.fn_value_opt.unwrap();
         let then_bb = self.context.append_basic_block(fun, "if.then");
-
-        // TODO: Handle missing else.
-        // TODO: Handle optional elsif.
-
         let else_bb = self.context.append_basic_block(fun, "if.else");
-        let cont_bb = self.context.append_basic_block(fun, "if.cont");
+        let merge_bb = self.context.append_basic_block(fun, "if.merge");
         // Evaluate the condition.
         let cond = self.expr(cond).into_int_value();
         self.builder
@@ -129,24 +123,31 @@ impl<'ctx> Gen<'ctx> {
         // Generate the then-branch.
         self.builder.position_at_end(then_bb);
         self.stmts(cons);
+        let then_not_merging = then_bb.has_terminator();
         // Add an unconditional branch instruction to then_bb if it does
         // not end with a termination instruction already.
         if then_bb.has_no_terminator() {
-            self.builder.build_unconditional_branch(cont_bb);
+            self.builder.build_unconditional_branch(merge_bb);
         }
 
         // Generate the optional else-branch.
+        let mut else_not_merging = true;
         if let Some(alt) = alt {
             self.builder.position_at_end(else_bb);
             self.stmts(alt);
+            else_not_merging = else_bb.has_terminator();
             // Add an unconditional branch instruction to else_bb if it does
             // not end with a termination instruction already.
             if else_bb.has_no_terminator() {
-                self.builder.build_unconditional_branch(cont_bb);
+                self.builder.build_unconditional_branch(merge_bb);
             }
         }
 
-        self.builder.position_at_end(cont_bb);
+        self.builder.position_at_end(merge_bb);
+
+        if then_not_merging && else_not_merging {
+            merge_bb.remove_from_function().unwrap();
+        }
     }
 
     fn return_stmt(&mut self, expr: &Expr) {

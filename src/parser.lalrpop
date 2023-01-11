@@ -25,7 +25,9 @@ Stmt: Stmt = {
   "let" <name:Id> "=" <expr:Expr> ";" =>
     Stmt::Let{ name, expr },
 
-  "def" <name:Id> "(" <params:Comma<Id>?> ")" <stmts:Stmt*> "end" =>
+  "def" <name:Id> "(" <params:Comma<Id>?> ")" "{"
+    <stmts:Stmt*> 
+  "}" =>
     Stmt::Def{ name, params, stmts },
 
   <name:Id> "=" <expr:Expr> ";" =>
@@ -35,11 +37,41 @@ Stmt: Stmt = {
   <expr:Expr> ";" =>
     Stmt::Expr(expr),
 
-  "if" <cond:Expr> "then" <cons:Stmt*> <alt:("else" Stmt*)?> "end" =>
-    Stmt::If{ cond, cons, alt: alt.map(|s| s.1) },
+  <ifstmt:IfStmt> => 
+    ifstmt,
+  // "if" <cond:Expr> "{" 
+  //   <cons:Stmt*> 
+  // "}" =>
+  //   Stmt::If{ cond, cons, alt: None },
+
+  // "if" <cond:Expr> "{" 
+  //   <cons:Stmt*> 
+  // "}" "else" "{"
+  //   <alt:Stmt*> 
+  // "}" =>
+  //   Stmt::If{ cond, cons, alt: Some(alt) },
 
   "return" <expr:Expr> ";" =>
     Stmt::Return(expr),
+}
+
+IfStmt: Stmt = {
+  "if" <cond:Expr> "{" 
+    <cons:Stmt*> 
+  "}" =>
+    Stmt::If{ cond, cons, alt: None },
+
+  "if" <cond:Expr> "{" 
+    <cons:Stmt*> 
+  "}" "else" "{"
+    <alt:Stmt*> 
+  "}" =>
+    Stmt::If{ cond, cons, alt: Some(alt) },
+
+  "if" <cond:Expr> "{" 
+    <cons:Stmt*> 
+  "}" "else" <elsif:IfStmt> =>
+    Stmt::If{ cond, cons, alt: Some(vec![elsif]) },
 }
 
   // "print" <e:Expr> => Stmt::Expr {
