@@ -1,9 +1,9 @@
-def foo() {
+def foo(x) {
   return 99;
 }
 
 // Comments.
 def main() {
   let x = 3 + 4 * 5;
-  return x + foo();
+  return foo(x);
 }

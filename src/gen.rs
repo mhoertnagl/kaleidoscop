@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::iter;
 use std::path::Path;
 
 use either::Either::{Left, Right};
@@ -6,6 +7,7 @@ use either::Either::{Left, Right};
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
+use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue};
 use inkwell::IntPredicate;
 
@@ -94,19 +96,24 @@ impl<'ctx> Gen<'ctx> {
     }
 
     fn def_stmt(&mut self, name: &String, params: &Vec<String>, stmts: &Vec<Stmt>) {
-        let zero = self.context.i64_type().const_zero();
         let ret_type = self.context.i64_type();
-        let fun_type = ret_type.fn_type(&[], false);
+        let param_types: Vec<BasicMetadataTypeEnum> =
+            iter::repeat(ret_type.into()).take(params.len()).collect();
+        let fun_type = ret_type.fn_type(&param_types, false);
         let fun = self.module.add_function(name, fun_type, None);
-        let entry_bb = self.context.append_basic_block(fun, "entry");
         self.fn_value_opt = Some(fun);
+
+        // Create the entry basic block and compile function statements.
+        let entry_bb = self.context.append_basic_block(fun, "entry");
         self.builder.position_at_end(entry_bb);
         self.stmts(stmts);
+
         // Test if the last basic block in the function ends with a termination
         // instruction. If it does not, return 0.
         // The function contains at least the entry block.
         let last_bb = fun.get_last_basic_block().unwrap();
         if last_bb.has_no_terminator() {
+            let zero = self.context.i64_type().const_zero();
             self.builder.position_at_end(last_bb);
             self.builder.build_return(Some(&zero));
         }
