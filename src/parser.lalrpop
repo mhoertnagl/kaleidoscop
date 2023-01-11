@@ -59,19 +59,19 @@ IfStmt: Stmt = {
   "if" <cond:Expr> "{" 
     <cons:Stmt*> 
   "}" =>
-    Stmt::If{ cond, cons, alt: None },
+    Stmt::If{ cond, cons },
 
   "if" <cond:Expr> "{" 
     <cons:Stmt*> 
   "}" "else" "{"
     <alt:Stmt*> 
   "}" =>
-    Stmt::If{ cond, cons, alt: Some(alt) },
+    Stmt::IfElse{ cond, cons, alt },
 
   "if" <cond:Expr> "{" 
     <cons:Stmt*> 
   "}" "else" <elsif:IfStmt> =>
-    Stmt::If{ cond, cons, alt: Some(vec![elsif]) },
+    Stmt::IfElse{ cond, cons, alt: vec![elsif] },
 }
 
   // "print" <e:Expr> => Stmt::Expr {
@@ -151,6 +151,6 @@ Text: String = {
 
 match {
   r"\s*" => {},
-  r"#[^\n\r]*[\n\r]*" => {},
+  r"//[^\n\r]*[\n\r]*" => {},
   _,
 } 

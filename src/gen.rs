@@ -1,18 +1,17 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::values::{BasicValueEnum, FunctionValue, IntMathValue, IntValue, PointerValue};
+use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue};
 use inkwell::IntPredicate;
 
 use crate::ast::Expr;
 use crate::ast::Opcode;
 use crate::ast::Stmt;
 use crate::ast::Unit;
-use crate::ext::{BasicBlockExt, FunctionValueExt};
+use crate::ext::BasicBlockExt;
 
 pub struct Gen<'ctx> {
     builder: Builder<'ctx>,
@@ -33,9 +32,9 @@ impl<'ctx> Gen<'ctx> {
         }
     }
 
-    pub fn compile(&mut self, module: &Unit) {
+    pub fn compile(&mut self, unit: &Unit) {
         let path = Path::new("main.bc");
-        match module {
+        match unit {
             Unit::Body { stmts } => {
                 self.stmts(stmts);
                 match self.module.verify() {
@@ -68,7 +67,8 @@ impl<'ctx> Gen<'ctx> {
             } => self.def_stmt(name, params, stmts),
             Stmt::Let { name, expr } => self.let_stmt(name, expr),
             Stmt::Expr(expr) => self.expr_stmt(expr),
-            Stmt::If { cond, cons, alt } => self.if_stmt(cond, cons, alt),
+            Stmt::If { cond, cons } => self.if_stmt(cond, cons),
+            Stmt::IfElse { cond, cons, alt } => self.if_else_stmt(cond, cons, alt),
             Stmt::Return(expr) => self.return_stmt(expr),
         }
     }
@@ -93,7 +93,9 @@ impl<'ctx> Gen<'ctx> {
         // Test if the last basic block in the function ends with a termination
         // instruction. If it does not, return 0.
         // The function contains at least the entry block.
-        if fun.has_no_terminator() {
+        let last_bb = fun.get_last_basic_block().unwrap();
+        if last_bb.has_no_terminator() {
+            self.builder.position_at_end(last_bb);
             self.builder.build_return(Some(&zero));
         }
     }
@@ -109,12 +111,35 @@ impl<'ctx> Gen<'ctx> {
         self.expr(expr);
     }
 
-    fn if_stmt(&mut self, cond: &Expr, cons: &Vec<Stmt>, alt: &Option<Vec<Stmt>>) {
-        // Append three new basic blocks to the current function.
+    fn if_stmt(&mut self, cond: &Expr, cons: &Vec<Stmt>) {
+        let fun = self.fn_value_opt.unwrap();
+        let then_bb = self.context.append_basic_block(fun, "if.then");
+        let merge_bb = self.context.append_basic_block(fun, "if.merge");
+
+        // Evaluate the condition.
+        let cond = self.expr(cond).into_int_value();
+        self.builder
+            .build_conditional_branch(cond, then_bb, merge_bb);
+
+        // Generate the then-branch.
+        self.builder.position_at_end(then_bb);
+        self.stmts(cons);
+
+        // Add an unconditional branch instruction to then_bb if it does
+        // not end with a termination instruction.
+        if then_bb.has_no_terminator() {
+            self.builder.build_unconditional_branch(merge_bb);
+        }
+
+        self.builder.position_at_end(merge_bb);
+    }
+
+    fn if_else_stmt(&mut self, cond: &Expr, cons: &Vec<Stmt>, alt: &Vec<Stmt>) {
         let fun = self.fn_value_opt.unwrap();
         let then_bb = self.context.append_basic_block(fun, "if.then");
         let else_bb = self.context.append_basic_block(fun, "if.else");
         let merge_bb = self.context.append_basic_block(fun, "if.merge");
+
         // Evaluate the condition.
         let cond = self.expr(cond).into_int_value();
         self.builder
@@ -125,26 +150,24 @@ impl<'ctx> Gen<'ctx> {
         self.stmts(cons);
         let then_not_merging = then_bb.has_terminator();
         // Add an unconditional branch instruction to then_bb if it does
-        // not end with a termination instruction already.
+        // not end with a termination instruction.
         if then_bb.has_no_terminator() {
             self.builder.build_unconditional_branch(merge_bb);
         }
 
-        // Generate the optional else-branch.
-        let mut else_not_merging = true;
-        if let Some(alt) = alt {
-            self.builder.position_at_end(else_bb);
-            self.stmts(alt);
-            else_not_merging = else_bb.has_terminator();
-            // Add an unconditional branch instruction to else_bb if it does
-            // not end with a termination instruction already.
-            if else_bb.has_no_terminator() {
-                self.builder.build_unconditional_branch(merge_bb);
-            }
+        // Generate the else-branch.
+        self.builder.position_at_end(else_bb);
+        self.stmts(alt);
+        let else_not_merging = else_bb.has_terminator();
+        // Add an unconditional branch instruction to else_bb if it does
+        // not end with a termination instruction.
+        if else_bb.has_no_terminator() {
+            self.builder.build_unconditional_branch(merge_bb);
         }
 
         self.builder.position_at_end(merge_bb);
 
+        // Remove the merge branch if both branches do not merge to merge_bb.
         if then_not_merging && else_not_merging {
             merge_bb.remove_from_function().unwrap();
         }
