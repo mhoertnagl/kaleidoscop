@@ -128,6 +128,7 @@ impl<'ctx> Gen<'ctx> {
         // Add an unconditional branch instruction to then_bb if it does
         // not end with a termination instruction.
         if then_bb.has_no_terminator() {
+            self.builder.position_at_end(then_bb);
             self.builder.build_unconditional_branch(merge_bb);
         }
 
@@ -148,29 +149,32 @@ impl<'ctx> Gen<'ctx> {
         // Generate the then-branch.
         self.builder.position_at_end(then_bb);
         self.stmts(cons);
-        let then_not_merging = then_bb.has_terminator();
-        // Add an unconditional branch instruction to then_bb if it does
-        // not end with a termination instruction.
-        if then_bb.has_no_terminator() {
-            self.builder.build_unconditional_branch(merge_bb);
-        }
 
         // Generate the else-branch.
         self.builder.position_at_end(else_bb);
         self.stmts(alt);
-        let else_not_merging = else_bb.has_terminator();
+
+        // Both branches already terminate. Remove merge block and return.
+        if then_bb.has_terminator() && else_bb.has_terminator() {
+            merge_bb.remove_from_function().unwrap();
+            return;
+        }
+
+        // Add an unconditional branch instruction to then_bb if it does
+        // not end with a termination instruction.
+        if then_bb.has_no_terminator() {
+            self.builder.position_at_end(then_bb);
+            self.builder.build_unconditional_branch(merge_bb);
+        }
+
         // Add an unconditional branch instruction to else_bb if it does
         // not end with a termination instruction.
         if else_bb.has_no_terminator() {
+            self.builder.position_at_end(else_bb);
             self.builder.build_unconditional_branch(merge_bb);
         }
 
         self.builder.position_at_end(merge_bb);
-
-        // Remove the merge branch if both branches do not merge to merge_bb.
-        if then_not_merging && else_not_merging {
-            merge_bb.remove_from_function().unwrap();
-        }
     }
 
     fn return_stmt(&mut self, expr: &Expr) {
