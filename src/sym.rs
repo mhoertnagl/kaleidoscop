@@ -4,17 +4,21 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use inkwell::types::PointerType;
-use inkwell::values::{AnyValue, AnyValueEnum, PointerValue};
+use inkwell::values::{AnyValue, AnyValueEnum, BasicValueEnum, PointerValue};
+
+// https://rustpython.github.io/website/src/rustpython_compiler/symboltable.rs.html#156-158
+// https://github.com/OlegTheCat/unlisp-llvm/blob/master/unlispc/src/codegen/context.rs
+// https://github.com/brasswood/rust-cmmc/blob/main/src/name/symbol.rs
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Sym {
     pub name: String,
     // TODO: Going to be a AnyValue later on.
-    pub val: AnyValueEnum<'static>,
+    pub val: AnyValueEnum,
 }
 
 impl Sym {
-    pub fn new(name: &str, val: AnyValueEnum<'static>) -> Sym {
+    pub fn new(name: &str, val: AnyValueEnum) -> Sym {
         Sym {
             name: name.to_string(),
             val,
@@ -25,16 +29,16 @@ impl Sym {
 pub struct SymTable {
     // parent: Option<Box<SymTable<'ctx>>>,
     // parent: Option<Rc<&'ctx SymTable<'ctx>>>,
-    parent: Option<Box<SymTable>>,
+    parent: Vec<SymTable>,
     symbols: HashMap<String, Sym>,
 }
 
 impl SymTable {
     pub fn root() -> SymTable {
-        SymTable::new(None)
+        SymTable::new(vec![])
     }
 
-    pub fn new(parent: Option<Box<SymTable>>) -> SymTable {
+    pub fn new(parent: Vec<SymTable>) -> SymTable {
         SymTable {
             parent: parent,
             symbols: HashMap::new(),
