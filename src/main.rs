@@ -6,6 +6,7 @@ lalrpop_mod!(pub parser);
 mod ast;
 mod ext;
 mod gen;
+mod sym;
 
 use std::fs;
 

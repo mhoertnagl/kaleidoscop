@@ -37,7 +37,7 @@ Stmt: Stmt = {
   "let" <name:Id> "=" <expr:Expr> ";" =>
     Stmt::Let{ name, expr },
 
-  "def" <name:Id> "(" <params:Comma<Id>> ")" "{" <stmts:Stmt*> "}" =>
+  "fn" <name:Id> "(" <params:Comma<Id>> ")" "{" <stmts:Stmt*> "}" =>
     Stmt::Def{ name, params, stmts },
 
   <name:Id> "=" <expr:Expr> ";" =>
