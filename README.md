@@ -1,4 +1,4 @@
-# klaeidoscop
+# kaleidoscop
 
 Following [this Video Tutorial](https://www.youtube.com/watch?v=XOOBL3bhFHs&list=PLkpGh2gaaueyzEAn07jf44LdscDeWRyzy&index=1)
 
