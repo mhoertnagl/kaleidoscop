@@ -1,141 +1,41 @@
-use std::borrow::Borrow;
-use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
-use std::rc::Rc;
-
-use inkwell::types::PointerType;
-use inkwell::values::{AnyValue, AnyValueEnum, BasicValueEnum, PointerValue};
-
-// https://rustpython.github.io/website/src/rustpython_compiler/symboltable.rs.html#156-158
-// https://github.com/OlegTheCat/unlisp-llvm/blob/master/unlispc/src/codegen/context.rs
-// https://github.com/brasswood/rust-cmmc/blob/main/src/name/symbol.rs
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct Sym {
-    pub name: String,
-    // TODO: Going to be a AnyValue later on.
-    pub val: AnyValueEnum,
-}
-
-impl Sym {
-    pub fn new(name: &str, val: AnyValueEnum) -> Sym {
-        Sym {
-            name: name.to_string(),
-            val,
-        }
-    }
-}
-
 pub struct SymTable {
-    // parent: Option<Box<SymTable<'ctx>>>,
-    // parent: Option<Rc<&'ctx SymTable<'ctx>>>,
-    parent: Vec<SymTable>,
-    symbols: HashMap<String, Sym>,
+    val: i64,
+    pub kids: Vec<SymTable>,
 }
 
 impl SymTable {
-    pub fn root() -> SymTable {
-        SymTable::new(vec![])
-    }
-
-    pub fn new(parent: Vec<SymTable>) -> SymTable {
+    pub fn new(val: i64) -> Self {
         SymTable {
-            parent: parent,
-            symbols: HashMap::new(),
+            val: val,
+            kids: vec![],
         }
     }
 
-    pub fn new_subtable(self) -> Box<SymTable> {
-        Box::from(SymTable::new(Some(Box::from(self))))
-    }
-
-    pub fn insert(&mut self, sym: Sym) {
-        self.symbols.insert(sym.name.to_string(), sym);
-    }
-
-    pub fn get(&self, name: &str) -> Option<&Sym> {
-        // self.symbols.borrow().get(name)
-
-        self.symbols
-            .get(name)
-            .or_else(|| self.parent.as_ref().and_then(|p| p.get(name)))
-
-        // match self.symbols.borrow().get(name) {
-        //     Some(sym) => Some(sym),
-        //     None => match self.parent {
-        //         Some(p) => p.get(name),
-        //         None => None,
-        //     },
-        // }
+    pub fn insert(&mut self, kid: SymTable) -> &mut Self {
+        self.kids.push(kid);
+        self
     }
 }
 
-use inkwell::context::Context;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-fn test_insert() {
-    let context = Context::create();
-    let i64_type = context.i64_type();
-    let zero = i64_type.const_zero().as_any_value_enum();
+    #[test]
+    fn create_new_symtable() {
+        let st = SymTable::new(1);
 
-    let mut root = SymTable::root();
-    let sym = Sym::new("x", zero);
-    let sym_clone = &sym.clone();
+        assert_eq!(st.val, 1);
+    }
 
-    assert_eq!(root.get("x"), None);
-    assert_eq!(root.get("y"), None);
+    #[test]
+    fn insert() {
+        let mut st = SymTable::new(1);
+        st.insert(SymTable::new(2));
+        st.insert(SymTable::new(3));
 
-    root.insert(sym);
-
-    assert_eq!(root.get("x"), Some(sym_clone));
-    assert_eq!(root.get("y"), None);
-}
-
-#[test]
-fn test_insert2() {
-    let context = Context::create();
-    let mut root = SymTable::root();
-
-    assert_eq!(root.get("x"), None);
-    assert_eq!(root.get("y"), None);
-    assert_eq!(root.get("z"), None);
-
-    root.insert(const_sym(&context, "x", 0));
-    root.insert(const_sym(&context, "y", 1));
-
-    assert_eq!(root.get("x"), Some(&const_sym(&context, "x", 0)));
-    assert_eq!(root.get("y"), Some(&const_sym(&context, "y", 1)));
-    assert_eq!(root.get("z"), None);
-}
-
-#[test]
-fn test_subtable_insert() {
-    let context = Context::create();
-    let mut root = SymTable::root();
-    let mut sub1 = root.new_subtable();
-
-    assert_eq!(root.get("x"), None);
-    assert_eq!(root.get("y"), None);
-    assert_eq!(sub1.get("x"), None);
-    assert_eq!(sub1.get("y"), None);
-
-    root.insert(const_sym(&context, "x", 0));
-
-    assert_eq!(root.get("x"), Some(&const_sym(&context, "x", 0)));
-    assert_eq!(root.get("y"), None);
-    assert_eq!(sub1.get("x"), None);
-    assert_eq!(sub1.get("y"), None);
-
-    sub1.insert(const_sym(&context, "y", 1));
-}
-
-fn const_sym(context: &'static Context, name: &str, value: u64) -> Sym {
-    Sym::new(name, const_for(&context, value))
-}
-
-fn const_for(context: &'static Context, value: u64) -> AnyValueEnum<'static> {
-    context
-        .i64_type()
-        .const_int(value, true)
-        .as_any_value_enum()
+        assert_eq!(st.kids.len(), 2);
+        assert_eq!(st.kids[0].val, 2);
+        assert_eq!(st.kids[1].val, 3);
+    }
 }
