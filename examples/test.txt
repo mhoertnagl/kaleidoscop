@@ -1,9 +1,8 @@
-fn foo(x, y) {
-  return 99;
-}
+A ∨ ¬A.
+((P → Q) ∧ (Q → R)) → (P → R).
 
-// Comments.
-fn main() {
-  let x = 3 + 4 * 5;
-  return foo(x, 6);
-}
+// → ↔ -> <-> => <=>
+// ∨ ↓ ≡ ≢ === !==
+// ∧ ↑ 
+// ¬
+// IDs, ⊤ ⊥ 

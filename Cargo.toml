@@ -10,7 +10,4 @@ lalrpop = "0.19.8"
 lalrpop-util = { version = "0.19.8", features = ["lexer"] }
 # lalrpop-util = "0.19.8"
 regex = "1"
-inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = [
-  "llvm14-0",
-] }
 either = "1.8.0"

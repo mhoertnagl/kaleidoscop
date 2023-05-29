@@ -17,138 +17,94 @@ grammar;
 //   }
 // };
 
-#[inline]
-Comma<T>: Vec<T> = {
-  <v:(<T> ",")*> <e:T?> => match e {
-      None => v,
-      Some(e) => {
-          let mut v = v;
-          v.push(e);
-          v
-      }
-  }
-};
+// #[inline]
+// Comma<T>: Vec<T> = {
+//   <v:(<T> ",")*> <e:T?> => match e {
+//       None => v,
+//       Some(e) => {
+//           let mut v = v;
+//           v.push(e);
+//           v
+//       }
+//   }
+// };
 
 pub Unit: Unit = {
   <stmts:Stmt*> => Unit::Body{ stmts }
 };
 
 Stmt: Stmt = {
-  "let" <name:Id> "=" <expr:Expr> ";" =>
-    Stmt::Let{ name, expr },
-
-  "fn" <name:Id> "(" <params:Comma<Id>> ")" "{" <stmts:Stmt*> "}" =>
-    Stmt::Def{ name, params, stmts },
-
-  <name:Id> "=" <expr:Expr> ";" =>
-    Stmt::Assign{ name, expr },
-
-  // TODO: Acuatlly function call is enough.
-  <expr:Expr> ";" =>
+  <expr:Expr> "." =>
     Stmt::Expr(expr),
-
-  IfStmt,
-
-  "return" <expr:Expr> ";" =>
-    Stmt::Return(expr),
 }
-
-IfStmt: Stmt = {
-  "if" <cond:Expr> "{" 
-    <cons:Stmt*> 
-  "}" =>
-    Stmt::If{ cond, cons },
-
-  "if" <cond:Expr> "{" 
-    <cons:Stmt*> 
-  "}" "else" "{"
-    <alt:Stmt*> 
-  "}" =>
-    Stmt::IfElse{ cond, cons, alt },
-
-  "if" <cond:Expr> "{" 
-    <cons:Stmt*> 
-  "}" "else" <elsif:IfStmt> =>
-    Stmt::IfElse{ cond, cons, alt: vec![elsif] },
-}
-
-  // "print" <e:Expr> => Stmt::Expr {
-  //   expr: e,
-  // },
 
 Expr: Box<Expr> = {
-  <left:Expr> <op:ExprOp> <right:AdditiveExpr> =>
+  ImplicationExpr,
+};
+
+ImplicationExpr: Box<Expr> = {
+  <left:ImplicationExpr> <op:ImplicationExprOp> <right:OrExpr> =>
     Box::new(Expr::BinOp{ left, op, right }),
 
-  AdditiveExpr,
+  OrExpr,
 };
 
-ExprOp: Opcode = {
-  "==" => Opcode::EQ,
-  "!=" => Opcode::NE,
-  "<" => Opcode::LT,
-  "<=" => Opcode::LE,
-  ">" => Opcode::GT,
-  ">=" => Opcode::GE
+ImplicationExprOp: Opcode = {
+  "→"   => Opcode::Impl,
+  "↔"   => Opcode::BiImpl,
+  "->"  => Opcode::Impl,
+  "<->" => Opcode::BiImpl,
+  "=>"  => Opcode::Impl,
+  "<=>" => Opcode::BiImpl,
 };
 
-AdditiveExpr: Box<Expr> = {
-  <left:AdditiveExpr> <op:AdditiveExprOp> <right:MultiplicativeExpr> =>
+OrExpr: Box<Expr> = {
+  <left:OrExpr> <op:OrExprOp> <right:AndExpr> =>
     Box::new(Expr::BinOp{ left, op, right }),
 
-  MultiplicativeExpr,
+    AndExpr,
 };
 
-AdditiveExprOp: Opcode = {
-  "+" => Opcode::Add,
-  "-" => Opcode::Sub,
+OrExprOp: Opcode = {
+  "∨"   => Opcode::Or,
+  "↓"   => Opcode::Nor,
+  "≡"   => Opcode::NotXor,
+  "≢"   => Opcode::Xor,
+  // "===" => Opcode::NotXor,
+  // "!==" => Opcode::Xor,
 };
 
-MultiplicativeExpr: Box<Expr> = {
-  <left:MultiplicativeExpr> <op:MultiplicativeOp> <right:Term> =>
+AndExpr: Box<Expr> = {
+  <left:AndExpr> <op:AndExprOp> <right:NegExpr> =>
     Box::new(Expr::BinOp{ left, op, right }),
 
+  NegExpr,
+};
+
+AndExprOp: Opcode = {
+  "∧" => Opcode::And,
+  "↑" => Opcode::Nand,
+};
+
+NegExpr: Box<Expr> = {
+  "¬" <e:Term> => Box::new(Expr::Neg(<>)),
   Term,
 };
 
-MultiplicativeOp: Opcode = {
-  "*" => Opcode::Mul,
-  "/" => Opcode::Div,
-};
-
 Term: Box<Expr> = {
-  Num => Box::new(Expr::Num(<>)),
-  Id => Box::new(Expr::Id(<>)),
-  Text => Box::new(Expr::Text(<>)),
-  Call => <>,
-  "(" <e:Expr> ")" => e,
-};
-
-Call: Box<Expr> = {
-  <name:Id> "(" <args:Comma<Expr>> ")" =>
-    Box::new(Expr::Call{ name, args }),
-};
-
-Num: u64 = {
-  r"[0-9]+" => u64::from_str(<>).unwrap(),
+  "(" <e:Expr> ")" => <>,
+  // "¬" <e:Expr>     => Box::new(Expr::Neg(<>)),
+  Id               => Box::new(Expr::Id(<>)),
 };
 
 Id: String = {
-  r"[a-zA-Z][a-zA-Z0-9]*" => <>.to_string(),
+  r"[a-zA-Z0-9]+" => <>.to_string(),
+  "⊤"             => <>.to_string(),
+  "⊥"             => <>.to_string(),
 };
 
-// TODO: escape sequences incl. \'
-Text: String = {
-  r"'[^']*'" => <>.trim_matches('\'').to_string(),
-}
-
-// Num: f64 = {
-//   r"-?[0-9]+" => f64::from_str(<>).unwrap(),
-//   r"-?[0-9]*\.[0-9]*" => f64::from_str(<>).unwrap()
-// };
-
 match {
-  r"\s*" => {},
+  r"\s*"               => {},
   r"//[^\n\r]*[\n\r]*" => {},
   _,
 } 
