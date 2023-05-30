@@ -52,10 +52,10 @@ ImplicationExpr: Box<Expr> = {
 ImplicationExprOp: Opcode = {
   "→"   => Opcode::Impl,
   "↔"   => Opcode::BiImpl,
-  "->"  => Opcode::Impl,
-  "<->" => Opcode::BiImpl,
-  "=>"  => Opcode::Impl,
-  "<=>" => Opcode::BiImpl,
+  // "->"  => Opcode::Impl,
+  // "<->" => Opcode::BiImpl,
+  // "=>"  => Opcode::Impl,
+  // "<=>" => Opcode::BiImpl,
 };
 
 OrExpr: Box<Expr> = {
